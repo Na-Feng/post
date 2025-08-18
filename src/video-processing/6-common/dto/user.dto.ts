@@ -39,6 +39,11 @@ export class UserAccountDto {
    * @example "AIzaSy*******************"
    */
   youtubeApiKey?: string;
+
+  /**
+   * 需要发布到的频道
+   */
+  youtubeChannel?: string;
 }
 
 /**

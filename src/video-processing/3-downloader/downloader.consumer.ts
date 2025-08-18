@@ -1,7 +1,8 @@
 import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { Logger } from '@nestjs/common';
-import axios from 'axios';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DownloadTaskDto } from '../6-common/dto/task.dto';
@@ -23,6 +24,7 @@ export class DownloaderConsumer extends WorkerHost {
     @InjectQueue('video-upload-queue') private videoUploadQueue: Queue,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly tasksService: TasksService,
+    private readonly httpService: HttpService, // 注入 HttpService
   ) {
     super();
   }
@@ -52,19 +54,13 @@ export class DownloaderConsumer extends WorkerHost {
       }
 
       const safeTitle = title
-        .replace(/[\r\n\s\\/:'"*?<>|]+/g, '_')
+        .replace(/[\s\/:'"*?<>|]+/g, '_')
         .substring(0, 50);
       const fileName = `${aweme_id}#${safeTitle}#${digg_count}.mp4`;
       const filePath = path.join(userDownloadDir, fileName);
 
       if (fs.existsSync(filePath)) {
         this.logger.warn(`文件已存在，跳过下载: ${filePath}`);
-        // await this.tasksService.updateTaskStatus(
-        //   taskId,
-        //   'downloaded',
-        //   '文件已存在，直接进入上传流程',
-        // );
-        // await this.createUploadTask(filePath, title, taskId, user);
         return;
       }
 
@@ -76,15 +72,16 @@ export class DownloaderConsumer extends WorkerHost {
         aweme_id,
       });
 
-      const response = await axios({
-        method: 'get',
-        url: video_url,
-        responseType: 'stream',
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-          Referer: `https://www.douyin.com/user/${sec_user_id}`,
-        },
-      });
+      // 使用 HttpService 进行下载
+      const response = await firstValueFrom(
+        this.httpService.get(video_url, {
+          responseType: 'stream',
+          headers: {
+            'User-Agent': 'Mozilla/5.0',
+            Referer: `https://www.douyin.com/user/${sec_user_id}`,
+          },
+        }),
+      );
 
       const totalLength = parseInt(response.headers['content-length'], 10);
       let receivedLength = 0;

@@ -11,6 +11,7 @@ import { NotificationsModule } from './5-notifications/notifications.module';
 import { RedisModule } from './6-common/redis/redis.module';
 import { QueueModule } from './6-common/queues/queue.module';
 import { TasksModule } from './7-tasks/tasks.module';
+import { UserModule } from './8-user/user.module';
 
 /**
  * @class VideoProcessingModule
@@ -37,6 +38,7 @@ import { TasksModule } from './7-tasks/tasks.module';
     UploaderModule, // 4. 视频上传模块
     NotificationsModule, // 5. 实时通知模块
     TasksModule, // 7. 任务管理模块
+    UserModule, // 8. 用户管理模块
   ],
   // 这个根模块通常不需要再单独提供 providers 或 exports
   // 因为所有具体的实现都封装在各自的子模块中了

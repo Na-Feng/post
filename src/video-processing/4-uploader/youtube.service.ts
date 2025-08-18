@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import { google, Auth } from 'googleapis';
 import { UserAccountDto } from '../6-common/dto/user.dto';
-import { TasksService } from '../7-tasks/tasks.service';
 
+import { UserService } from '../8-user/user.service';
 @Injectable()
 export class YoutubeService {
   private readonly logger = new Logger(YoutubeService.name);
@@ -14,7 +14,8 @@ export class YoutubeService {
   private readonly redirectUri: string;
   constructor(
     private readonly configService: ConfigService,
-    private readonly tasksService: TasksService,
+
+    private readonly userService: UserService,
   ) {
     this.clientId = this.configService.get<string>('GOOGLE_CLIENT_ID', '');
     this.clientSecret = this.configService.get<string>(
@@ -65,7 +66,7 @@ export class YoutubeService {
     }
 
     return {
-      access_token: tokens.access_token,
+      access_token: tokens.access_token || '',
       refresh_token: tokens.refresh_token,
     };
   }
@@ -98,7 +99,7 @@ export class YoutubeService {
           `用户 ${user.nickName} 获得了一个新的 Refresh Token，正在更新...`,
         );
         // 假设 tasksService.updateUserRefreshToken 是一个专门更新refresh_token的方法
-        this.tasksService
+        this.userService
           .updateUser(user.douyinSecId, {
             youtubeApiKey: tokens.refresh_token,
           })
