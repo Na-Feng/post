@@ -1,59 +1,92 @@
-<template>
-  <el-card class="mb-4" :class="`status-${task.status}`">
-    <div class="flex items-center justify-between mb-2">
-      <div class="flex items-center space-x-4">
-        <span class="font-mono text-sm text-gray-500">Job #{{ task.id }}</span>
-        <span class="font-bold text-lg">Douyin ID: {{ task.douyinId }}</span>
-      </div>
-      <el-tag :type="statusType" effect="dark" size="large">{{ task.status }}</el-tag>
-    </div>
-
-    <el-progress :percentage="task.progress" :status="progressStatus" :stroke-width="18" text-inside />
-
-    <div v-if="task.error" class="mt-2 text-red-500 text-sm font-mono">
-      Error: {{ task.error }}
-    </div>
-  </el-card>
-</template>
-
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { Task } from '../types';
-import { ElCard, ElProgress, ElTag } from 'element-plus'; // Explicitly import components
+import { PropType, computed } from 'vue';
+import { Task } from '../services/socket.service';
+import { CircleCheck, CircleClose, Loading, Document } from '@element-plus/icons-vue';
 
-const props = defineProps<{
-  task: Task;
-}>();
+const props = defineProps({
+  task: {
+    type: Object as PropType<Task>,
+    required: true,
+  },
+});
 
-const statusType = computed(() => {
+// --- 计算属性 ---
+
+// 根据任务状态，返回对应的 Element Plus 标签类型 (primary, success, danger, info)
+const statusTagType = computed(() => {
   switch (props.task.status) {
-    case 'completed':
-      return 'success';
-    case 'failed':
-      return 'danger';
-    case 'skipped':
-      return 'info';
-    default:
-      return ''; // Default for 'processing'
+    case 'downloading': return 'primary';
+    case 'completed': return 'success';
+    case 'failed': return 'danger';
+    default: return 'info';
   }
 });
 
+// 根据任务状态，返回对应的 Element Plus 图标
+const statusIcon = computed(() => {
+  switch (props.task.status) {
+    case 'downloading': return Loading;
+    case 'completed': return CircleCheck;
+    case 'failed': return CircleClose;
+    default: return null;
+  }
+});
+
+// 根据任务状态，返回对应的 Element Plus 进度条状态
 const progressStatus = computed(() => {
-  if (props.task.status === 'completed') return 'success';
   if (props.task.status === 'failed') return 'exception';
-  return ''; // Default for 'processing' or 'skipped'
+  if (props.task.status === 'completed') return 'success';
+  return ''; // 默认蓝色
+});
+
+// 格式化日期，如果日期无效则返回 'N/A'
+const formattedDate = computed(() => {
+  try {
+    return new Date(props.task.createdAt).toLocaleString();
+  } catch {
+    return 'N/A';
+  }
 });
 </script>
 
-<style scoped>
-/* Custom styling for status colors if needed, or rely purely on Element Plus types */
-.status-failed {
-  border-left: 5px solid #f56c6c; /* Element Plus danger color */
-}
-.status-completed {
-  border-left: 5px solid #67c23a; /* Element Plus success color */
-}
-.status-skipped {
-  border-left: 5px solid #909399; /* Element Plus info color */
-}
-</style>
+<template>
+  <el-card shadow="hover" body-class="!p-4 !bg-gray-800/60">
+    <div class="flex flex-col space-y-3">
+      
+      <!-- 任务标题 -->
+      <p class="font-semibold text-gray-200 truncate" :title="task.title">
+        <el-icon class="mr-2 align-middle"><Document /></el-icon>
+        {{ task.title || 'N/A' }}
+      </p>
+
+      <!-- 进度条 -->
+      <el-progress
+        :percentage="task.progress"
+        :status="progressStatus"
+        :stroke-width="10"
+        striped
+        striped-flow
+        :duration="10"
+      />
+
+      <!-- 底部信息行 -->
+      <div class="flex justify-between items-center text-xs text-gray-400 pt-1">
+        <!-- 状态标签 -->
+        <el-tag :type="statusTagType" size="small" effect="dark">
+          <el-icon v-if="statusIcon" :class="{ 'is-loading': task.status === 'downloading' }" class="mr-1">
+            <component :is="statusIcon" />
+          </el-icon>
+          {{ task.status }}
+        </el-tag>
+        <!-- 创建时间 -->
+        <span class="font-mono">{{ formattedDate }}</span>
+      </div>
+
+      <!-- 状态消息 -->
+      <div v-if="task.message" class="text-xs text-gray-500 bg-gray-900/50 p-2 rounded mt-1 font-mono">
+        <p class="break-all">> {{ task.message }}</p>
+      </div>
+
+    </div>
+  </el-card>
+</template>
