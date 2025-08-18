@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import DashboardView from '../views/DashboardView.vue';
 import UserTasksView from '../views/UserTasksView.vue';
 import AllTasksView from '../views/AllTasksView.vue';
+import OAuthCallbackView from '../views/OAuthCallbackView.vue'; // New import
 
 const routes = [
   {
@@ -21,6 +22,12 @@ const routes = [
     name: 'TaskSearch',
     component: AllTasksView,
     meta: { title: '用户任务查询' }
+  },
+  {
+    path: '/oauth-callback',
+    name: 'OAuthCallback',
+    component: OAuthCallbackView,
+    meta: { title: '授权回调' }
   },
 ];
 

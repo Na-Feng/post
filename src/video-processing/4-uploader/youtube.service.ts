@@ -31,7 +31,7 @@ export class YoutubeService {
    * 生成引导用户授权的URL。
    * 这是一个无状态操作，我们可以在方法内部临时创建一个客户端实例。
    */
-  public generateAuthUrl(): string {
+  public getGoogleAuthUrl(douyinSecId: string): string {
     // 临时创建一个 "干净" 的客户端，只用于计算URL
     const oauth2Client = new google.auth.OAuth2(
       this.clientId,
@@ -45,6 +45,7 @@ export class YoutubeService {
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
+      state: douyinSecId, // Pass douyinSecId as state
     });
   }
   /**
@@ -70,6 +71,27 @@ export class YoutubeService {
       refresh_token: tokens.refresh_token,
     };
   }
+
+  public async handleGoogleOAuthCallback(
+    code: string,
+    douyinSecId: string,
+  ): Promise<void> {
+    try {
+      const { refresh_token } = await this.getTokensFromCode(code);
+      await this.userService.updateUser(douyinSecId, {
+        youtubeApiKey: refresh_token,
+      });
+      this.logger.log(
+        `用户 ${douyinSecId} 的 YouTube API Key 已成功更新。`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `处理用户 ${douyinSecId} 的 Google OAuth 回调失败: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
   /**
    * @description 【已修改】为单次操作创建一个独立的、经过身份验证的客户端实例。
    * @param user - 包含凭证的用户账户对象。
@@ -180,3 +202,4 @@ export class YoutubeService {
     return youtubeUrl;
   }
 }
+

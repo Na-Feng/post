@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { userService } from '../services/user.service';
-import type { UserAccountDto, CreateUserAccountDto, UpdateUserAccountDto } from '../types/user.dto';
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Plus, Edit, Delete } from '@element-plus/icons-vue';
+import type {
+  UserAccountDto,
+  CreateUserAccountDto,
+  UpdateUserAccountDto,
+} from '../types/user.dto';
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+} from 'element-plus';
+import { Plus, Edit, Delete, Search } from '@element-plus/icons-vue';
 
 // --- 响应式状态 ---
 const users = ref<UserAccountDto[]>([]);
@@ -11,6 +20,7 @@ const isLoading = ref(true);
 const dialogVisible = ref(false);
 const isEdit = ref(false);
 const formRef = ref<FormInstance>();
+const searchQuery = ref('');
 
 // 当前正在编辑或创建的用户对象
 const currentUser = ref<Partial<UserAccountDto>>({});
@@ -18,9 +28,28 @@ const currentUser = ref<Partial<UserAccountDto>>({});
 // 表单校验规则
 const rules = ref<FormRules>({
   nickName: [{ required: true, message: '昵称不能为空', trigger: 'blur' }],
-  douyinSecId: [{ required: true, message: '抖音 Sec ID 不能为空', trigger: 'blur' }],
-  googleAccount: [{ required: true, message: 'Google 账户不能为空', trigger: 'blur' }],
-  youtubeApiKey: [{ required: true, message: 'YouTube API Key 不能为空', trigger: 'blur' }],
+  douyinSecId: [
+    { required: true, message: '抖音 Sec ID 不能为空', trigger: 'blur' },
+  ],
+  googleAccount: [
+    { required: true, message: 'Google 账户不能为空', trigger: 'blur' },
+  ],
+  youtubeChannel: [
+    { required: true, message: 'YouTube频道 不能为空', trigger: 'blur' },
+  ],
+});
+
+// --- 计算属性 ---
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) {
+    return users.value;
+  }
+  const lowerCaseQuery = searchQuery.value.toLowerCase();
+  return users.value.filter(
+    (user) =>
+      user.nickName.toLowerCase().includes(lowerCaseQuery) ||
+      user.douyinSecId.toLowerCase().includes(lowerCaseQuery),
+  );
 });
 
 // --- 数据获取 ---
@@ -48,6 +77,7 @@ function handleAddNew() {
     douyinSecId: '',
     googleAccount: '',
     youtubeApiKey: '',
+    youtubeChannel: '',
   };
   dialogVisible.value = true;
 }
@@ -60,11 +90,15 @@ function handleEdit(user: UserAccountDto) {
 
 async function handleDelete(user: UserAccountDto) {
   try {
-    await ElMessageBox.confirm(`确定要删除用户 "${user.nickName}" 吗？此操作不可恢复。`, '警告', {
-      confirmButtonText: '确定删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    });
+    await ElMessageBox.confirm(
+      `确定要删除用户 "${user.nickName}" 吗？此操作不可恢复。`,
+      '警告',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    );
     await userService.deleteUser(user.douyinSecId);
     ElMessage.success('用户已删除');
     fetchUsers(); // 重新加载列表
@@ -75,6 +109,19 @@ async function handleDelete(user: UserAccountDto) {
   }
 }
 
+async function handleGoogleAuth(user: UserAccountDto) {
+  try {
+    // 假设 userService 中有 getGoogleAuthUrl 方法返回授权链接
+    const { authUrl } = await userService.getGoogleAuthUrl(user.douyinSecId);
+    // 打开新窗口进行授权
+    window.open(authUrl, '_blank', 'width=600,height=700');
+    ElMessage.info('请在新打开的窗口中完成 Google 授权后刷新页面。');
+    // 实际应用中可能需要轮询后端检查授权状态或使用 WebSocket 通知
+  } catch (error: any) {
+    ElMessage.error(`获取授权链接失败: ${error.message}`);
+  }
+}
+
 async function handleSubmit() {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
@@ -82,11 +129,16 @@ async function handleSubmit() {
       try {
         if (isEdit.value) {
           // 更新用户
-          await userService.updateUser(currentUser.value.douyinSecId!, currentUser.value as UpdateUserAccountDto);
+          await userService.updateUser(
+            currentUser.value.douyinSecId!,
+            currentUser.value as UpdateUserAccountDto,
+          );
           ElMessage.success('用户更新成功');
         } else {
           // 创建用户
-          await userService.createUser(currentUser.value as CreateUserAccountDto);
+          await userService.createUser(
+            currentUser.value as CreateUserAccountDto,
+          );
           ElMessage.success('用户创建成功');
         }
         dialogVisible.value = false;
@@ -103,7 +155,6 @@ function handleDialogClose() {
     formRef.value.resetFields();
   }
 }
-
 </script>
 
 <template>
@@ -111,42 +162,116 @@ function handleDialogClose() {
     <template #header>
       <div class="flex justify-between items-center">
         <span class="text-xl font-semibold text-gray-200">用户管理</span>
-        <el-button type="primary" :icon="Plus" @click="handleAddNew">新增用户</el-button>
+        <div class="flex items-center space-x-4">
+          <el-input
+            v-model="searchQuery"
+            placeholder="按昵称或抖音ID搜索"
+            clearable
+            :prefix-icon="Search"
+            class="w-64"
+          />
+          <el-button type="primary" :icon="Plus" @click="handleAddNew"
+            >新增用户</el-button
+          >
+        </div>
       </div>
     </template>
 
-    <el-table :data="users" v-loading="isLoading" stripe table-layout="auto">
+    <el-table
+      :data="filteredUsers"
+      v-loading="isLoading"
+      stripe
+      table-layout="auto"
+    >
       <el-table-column prop="nickName" label="昵称" />
-      <el-table-column prop="douyinSecId" label="抖音 Sec ID" header-align="center" />
-      <el-table-column prop="googleAccount" label="Google 账户" align="center" />
+      <el-table-column
+        prop="douyinSecId"
+        label="抖音 Sec ID"
+        header-align="center"
+      />
+      <el-table-column
+        prop="googleAccount"
+        label="Google 账户"
+        align="center"
+      />
+      <el-table-column label="Google 授权" align="center" width="150">
+        <template #default="scope">
+          <el-tag v-if="scope.row.youtubeApiKey" type="success">已授权</el-tag>
+          <el-button
+            v-else
+            size="small"
+            type="warning"
+            @click="handleGoogleAuth(scope.row)"
+            >去授权</el-button
+          >
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="180" align="center">
         <template #default="scope">
-          <el-button size="small" type="primary" :icon="Edit" @click="handleEdit(scope.row)">编辑</el-button>
-          <el-button size="small" type="danger" :icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+          <el-button
+            size="small"
+            type="primary"
+            :icon="Edit"
+            @click="handleEdit(scope.row)"
+            >编辑</el-button
+          >
+          <el-button
+            size="small"
+            type="danger"
+            :icon="Delete"
+            @click="handleDelete(scope.row)"
+            >删除</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 新增/编辑用户对话框 -->
-    <el-dialog 
-      v-model="dialogVisible" 
-      :title="isEdit ? '编辑用户' : '新增用户'" 
-      width="50%" 
+    <el-dialog
+      v-model="dialogVisible"
+      :title="isEdit ? '编辑用户' : '新增用户'"
+      width="50%"
       @closed="handleDialogClose"
       draggable
     >
-      <el-form :model="currentUser" :rules="rules" ref="formRef" label-width="140px">
+      <el-form
+        :model="currentUser"
+        :rules="rules"
+        ref="formRef"
+        label-width="140px"
+      >
         <el-form-item label="用户昵称" prop="nickName">
-          <el-input v-model="currentUser.nickName" placeholder="例如：官方新闻"></el-input>
+          <el-input
+            v-model="currentUser.nickName"
+            placeholder="例如：官方新闻"
+          ></el-input>
         </el-form-item>
         <el-form-item label="抖音 Sec User ID" prop="douyinSecId">
-          <el-input v-model="currentUser.douyinSecId" :disabled="isEdit" placeholder="用户的唯一标识"></el-input>
+          <el-input
+            v-model="currentUser.douyinSecId"
+            :disabled="isEdit"
+            placeholder="用户的唯一标识"
+          ></el-input>
         </el-form-item>
         <el-form-item label="Google 账户" prop="googleAccount">
-          <el-input v-model="currentUser.googleAccount" placeholder="用于上传 YouTube 的 Google 邮箱"></el-input>
+          <el-input
+            v-model="currentUser.googleAccount"
+            placeholder="用于上传 YouTube 的 Google 邮箱"
+          ></el-input>
         </el-form-item>
         <el-form-item label="YouTube API Key" prop="youtubeApiKey">
-          <el-input v-model="currentUser.youtubeApiKey" type="textarea" placeholder="用于上传的 API 凭证"></el-input>
+          <el-input
+            v-model="currentUser.youtubeApiKey"
+            type="textarea"
+            placeholder="Google 授权成功后将自动填充"
+            :readonly="true"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="YouTube channel" prop="youtubeChannel">
+          <el-input
+            v-model="currentUser.youtubeChannel"
+            placeholder="YouTube 频道"
+          ></el-input>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -160,17 +285,20 @@ function handleDialogClose() {
 </template>
 
 <style>
-.el-table, .el-table__expanded-cell {
-    background-color: transparent;
+.el-table,
+.el-table__expanded-cell {
+  background-color: transparent;
 }
-.el-table th, .el-table tr {
-    background-color: transparent;
+.el-table th,
+.el-table tr {
+  background-color: transparent;
 }
 .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-    background-color: #ffffff10;
+  background-color: #ffffff10;
 }
-.el-table td.el-table__cell, .el-table th.el-table__cell.is-leaf {
-    border-bottom: 1px solid #ffffff20;
+.el-table td.el-table__cell,
+.el-table th.el-table__cell.is-leaf {
+  border-bottom: 1px solid #ffffff20;
 }
 .el-dialog {
   background-color: #2d3748; /* bg-gray-700 */
