@@ -1,4 +1,14 @@
-import { Controller, Get, Param, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Res,
+  HttpStatus,
+  HttpCode,
+  Body,
+} from '@nestjs/common';
 import { YoutubeService } from './youtube.service';
 import type { Response } from 'express';
 
@@ -7,7 +17,7 @@ export class YoutubeController {
   constructor(private readonly youtubeService: YoutubeService) {}
 
   @Get('auth-url/:douyinSecId')
-  async getGoogleAuthUrl(@Param('douyinSecId') douyinSecId: string) {
+  getGoogleAuthUrl(@Param('douyinSecId') douyinSecId: string) {
     const authUrl = this.youtubeService.getGoogleAuthUrl(douyinSecId);
     return { authUrl };
   }
@@ -27,5 +37,15 @@ export class YoutubeController {
       console.error('Google OAuth Callback Error:', error);
       res.redirect('http://localhost:5173/oauth-failure'); // Adjust frontend failure URL
     }
+  }
+
+  @Post('google-oauth-callback')
+  @HttpCode(HttpStatus.OK)
+  async handleGoogleOAuthCallback(
+    @Body('code') code: string,
+    @Body('douyinSecId') douyinSecId: string,
+  ) {
+    await this.youtubeService.handleGoogleOAuthCallback(code, douyinSecId);
+    return { message: 'Google OAuth callback processed successfully.' };
   }
 }

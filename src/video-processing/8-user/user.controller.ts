@@ -14,14 +14,10 @@ import {
   CreateUserAccountDto,
   UpdateUserAccountDto,
 } from '../6-common/dto/user.dto';
-import { YoutubeService } from '../4-uploader/youtube.service'; // Import YoutubeService
 
 @Controller('users')
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    private readonly youtubeService: YoutubeService, // Inject YoutubeService
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   @Post()
   create(@Body() createUserDto: CreateUserAccountDto) {
@@ -49,13 +45,4 @@ export class UserController {
     return this.userService.deleteUser(id);
   }
 
-  @Post('google-oauth-callback')
-  @HttpCode(HttpStatus.OK)
-  async handleGoogleOAuthCallback(
-    @Body('code') code: string,
-    @Body('douyinSecId') douyinSecId: string,
-  ) {
-    await this.youtubeService.handleGoogleOAuthCallback(code, douyinSecId);
-    return { message: 'Google OAuth callback processed successfully.' };
-  }
 }

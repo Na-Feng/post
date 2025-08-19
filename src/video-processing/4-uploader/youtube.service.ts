@@ -81,9 +81,7 @@ export class YoutubeService {
       await this.userService.updateUser(douyinSecId, {
         youtubeApiKey: refresh_token,
       });
-      this.logger.log(
-        `用户 ${douyinSecId} 的 YouTube API Key 已成功更新。`,
-      );
+      this.logger.log(`用户 ${douyinSecId} 的 YouTube API Key 已成功更新。`);
     } catch (error) {
       this.logger.error(
         `处理用户 ${douyinSecId} 的 Google OAuth 回调失败: ${error.message}`,
@@ -202,4 +200,3 @@ export class YoutubeService {
     return youtubeUrl;
   }
 }
-
