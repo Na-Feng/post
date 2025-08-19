@@ -70,7 +70,7 @@ class UserService {
     code: string;
     douyinSecId: string;
   }): Promise<UserAccountDto> {
-    return await http.post<UserAccountDto>('/youtube/oauth-callback', {
+    return await http.post<UserAccountDto>('/youtube/google-oauth-callback', {
       code,
       douyinSecId,
     });

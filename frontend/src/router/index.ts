@@ -9,25 +9,25 @@ const routes = [
     path: '/',
     name: 'Dashboard',
     component: DashboardView,
-    meta: { title: '实时任务' }
+    meta: { title: '实时任务' },
   },
   {
     path: '/users',
     name: 'UserList',
     component: UserTasksView,
-    meta: { title: '用户列表' }
+    meta: { title: '用户列表' },
   },
   {
     path: '/tasks',
     name: 'TaskSearch',
     component: AllTasksView,
-    meta: { title: '用户任务查询' }
+    meta: { title: '用户任务查询' },
   },
   {
     path: '/oauth-callback',
     name: 'OAuthCallback',
     component: OAuthCallbackView,
-    meta: { title: '授权回调' }
+    meta: { title: '授权回调' },
   },
 ];
 
